@@ -3,6 +3,7 @@ from time import clock
 import re
 import pulp
 import pulp.solvers
+import subprocess
 
 class SCIP_CMD(pulp.solvers.LpSolver_CMD):
     """The SCIP LP solver"""
@@ -49,7 +50,13 @@ class SCIP_CMD(pulp.solvers.LpSolver_CMD):
         if not os.path.exists(tmpSol):
             raise pulp.PulpSolverError("PuLP: Error while executing "+self.path)
         lp.status, values = self.readsol(tmpSol)
-        lp.assignVarsVals(values)
+        def _var_value(x):   # SCIP writes only the values of non-zero variables
+            try:
+                return values[x]
+            except KeyError:
+                return 0
+        all_values = {var: _var_value(var) for var in lp.variablesDict()}
+        lp.assignVarsVals(all_values)
         if not self.keepFiles:
             try: os.remove(tmpLp)
             except: pass
